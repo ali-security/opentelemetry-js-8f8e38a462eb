@@ -1,10 +1,6 @@
 name: Unit Tests
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-  merge_group:
+  workflow_dispatch:
 
 jobs:
   node-tests:
@@ -17,6 +13,7 @@ jobs:
           - "18"
           - "20"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
@@ -29,6 +26,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
           node-version: ${{ matrix.node_version }}
+
+      - name: Pin npm registry to release date
+        run: npm config set registry https://:2023-12-14T12%3A35%3A23.074Z@time-machines-npm.sealsecurity.io/
 
       - run: npm install -g npm@latest
         if: ${{ matrix.node_version == '18' || matrix.node_version == '20' }}
@@ -50,11 +50,25 @@ jobs:
             export NODE_OPTIONS=--openssl-legacy-provider
           fi
           npm run test
-      - name: Report Coverage
-        run: npm run codecov
-        if: ${{ matrix.node_version == '14' }}
+
+      - name: Pack @opentelemetry/core
+        if: ${{ matrix.node_version == '20' }}
+        run: |
+          mkdir -p /tmp/pack_out
+          npm pack --workspace=packages/opentelemetry-core --pack-destination=/tmp/pack_out
+          mv /tmp/pack_out/opentelemetry-core-1.19.0.tgz /tmp/pack_out/core-1.19.0.tgz
+          ls -l /tmp/pack_out
+
+      - name: Upload package artifact
+        if: ${{ matrix.node_version == '20' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-1.19.0-tgz
+          path: /tmp/pack_out/core-1.19.0.tgz
+          if-no-files-found: error
   node-windows-tests:
     runs-on: windows-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
@@ -67,6 +81,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
           node-version: '18'
+
+      - name: Pin npm registry to release date
+        run: npm config set registry https://:2023-12-14T12%3A35%3A23.074Z@time-machines-npm.sealsecurity.io/
 
       - run: npm install -g npm@latest
 
@@ -84,6 +101,7 @@ jobs:
         run: npm run test
   browser-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
@@ -96,6 +114,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
           node-version: 16
+
+      - name: Pin npm registry to release date
+        run: npm config set registry https://:2023-12-14T12%3A35%3A23.074Z@time-machines-npm.sealsecurity.io/
 
       - name: Bootstrap
         run: npm ci
@@ -105,10 +126,9 @@ jobs:
 
       - name: Unit tests
         run: npm run test:browser
-      - name: Report Coverage
-        run: npm run codecov:browser
   webworker-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
@@ -121,6 +141,9 @@ jobs:
             package-lock.json
           node-version: 16
 
+      - name: Pin npm registry to release date
+        run: npm config set registry https://:2023-12-14T12%3A35%3A23.074Z@time-machines-npm.sealsecurity.io/
+
       - name: Bootstrap
         run: npm ci
 
@@ -129,8 +152,6 @@ jobs:
 
       - name: Unit tests
         run: npm run test:webworker
-      - name: Report Coverage
-        run: npm run codecov:webworker
   api-eol-node-test:
     strategy:
       fail-fast: false
@@ -140,6 +161,7 @@ jobs:
           - "10"
           - "12"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -150,6 +172,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
           node-version: ${{ matrix.node_version }}
+
+      - name: Pin npm registry to release date
+        run: npm config set registry https://:2023-12-14T12%3A35%3A23.074Z@time-machines-npm.sealsecurity.io/
 
       - name: Build
         working-directory: ./api
